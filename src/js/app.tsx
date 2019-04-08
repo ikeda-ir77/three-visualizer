@@ -38,8 +38,8 @@ const App: any = (props: any) => {
 
     const scene = new THREE.Scene();
 
-    var axes = new THREE.AxesHelper(25);
-    scene.add(axes);
+    const axes = new THREE.AxesHelper(25);
+//    scene.add(axes);
 
     renderer.setPixelRatio(window.devicePixelRatio);
     const bg_color = 0x000000;
@@ -48,8 +48,12 @@ const App: any = (props: any) => {
     let geometry = new THREE.Geometry();
     geometry.verticesNeedUpdate = true;
     geometry.elementsNeedUpdate = true;
-    let material = new THREE.PointsMaterial( { size: 1, sizeAttenuation: false } );
-    let dot: any;
+    let material = new THREE.PointsMaterial( {
+      size: 1,
+      sizeAttenuation: false,
+      color: 0xff0000
+      });
+    let dot: any, line: any;
     const draw3d = () => {
       let x = -16;
       let z = -16;
@@ -66,29 +70,58 @@ const App: any = (props: any) => {
           z = -16;
         }
       }
-      dot = new THREE.Points( geometry, material );
-      scene.add( dot );
-      renderer.render( scene, camera );      
+      dot = new THREE.Points(geometry, material);
+      scene.add(dot);
+      renderer.render( scene, camera );
       processor.onaudioprocess = (e) => {
         update3d();
-      }
-    }
+      };
+    };
 
     const update3d = () => {
+//      console.log(dot)
       analyser.getByteTimeDomainData(dataArray);
       const sliceWidth = canvas.width * 1.0 / bufferLength;
+      let max = 0;
       for(var i = 0; i < bufferLength; i++) {
         const index = i;
+        const cy = dot.geometry.vertices[index].y;
         const y = (dataArray[i] / 128 - 1) * height / 20;
-        dot.geometry.vertices[index].y = y;
+        dot.geometry.vertices[index].y = cy < y ? y : cy - .1;
+        if(max < dot.geometry.vertices[index].y){
+          max = dot.geometry.vertices[index].y;
+        }
         dot.geometry.verticesNeedUpdate = true;
         dot.geometry.elementsNeedUpdate = true;
         dot.geometry.uvsNeedUpdate = true;
         dot.geometry.normalsNeedUpdate = true;
         dot.geometry.colorsNeedUpdate = true;
       }
+      dot.material.color.g = max / (height / 20);
+      dot.material.color.r = 1 - max / (height / 20);
+      dot.material.needsUpdate = true;
       renderer.render( scene, camera );
-    }
+    };
+
+    let timeoutId: any;
+    const resizeCanvas = () => {
+      if ( timeoutId ) return;
+
+      timeoutId = setTimeout(() => {
+        timeoutId = 0 ;
+
+      const
+        w = window.innerWidth,
+        h = window.innerHeight;
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(w, h);
+      camera.position.z = window.innerHeight / 2;
+
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+
+      }, 500);
+    };
 
     draw3d();
   };
