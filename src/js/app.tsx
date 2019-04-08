@@ -3,28 +3,42 @@ import * as ReactDOM from "react-dom";
 import * as THREE from "three";
 // import "../css/style.scss";
 
-const App: any = (props: any) => {
-  let canvas: any;
-  let canvasCtx: any;
-  let ticker = 0;
+let audioElm: any;
+let canvas: any;
+let source: any, processor: any, analyser: any;
+let timer: any;
 
+const App: any = (props: any) => {
+  let ticker = 0;
+  let sourceMedia: any;
+
+  console.log(audioElm)
+  const [src, setSrc] = React.useState();
+
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  const audioCtx = new AudioContext();
   const handleSuccess = (stream: any) => {
 // audio variable
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    const audioCtx = new AudioContext();
-    let source = audioCtx.createMediaStreamSource(stream);
-    let processor = audioCtx.createScriptProcessor(4096, 1, 1);
-    let analyser = audioCtx.createAnalyser();
+    if(!source){
+      source = sourceMedia ? audioCtx.createMediaElementSource(audioElm): audioCtx.createMediaStreamSource(stream);
+    }
+    processor = audioCtx.createScriptProcessor(4096, 1, 1);
+    if(analyser){
+      analyser.disconnect();
+      source.disconnect();
+    }
+    analyser = audioCtx.createAnalyser();
     analyser.fftSize = 4096;
-    var bufferLength = analyser.fftSize;
-    var dataArray = new Uint8Array(bufferLength);
+    const bufferLength = analyser.fftSize;
+    const dataArray = new Uint8Array(bufferLength);
     analyser.getByteTimeDomainData(dataArray);
 
     source.connect(analyser);
-    processor.connect(audioCtx.destination);
+    analyser.connect(audioCtx.destination);
 
 
 // three.js initialization
+  console.log(canvas)
     const width = canvas.width, height = canvas.height;
     const renderer = new THREE.WebGLRenderer({
       canvas: canvas
@@ -101,13 +115,24 @@ const App: any = (props: any) => {
       dot.material.needsUpdate = true;
     };
 
+    const updateCamera = () => {
+      const deg = ticker,
+      rad = deg * Math.PI / 180;
+      const x = Math.cos(rad) * 100;
+      const z = Math.sin(rad) * 100;
+      camera.position.set( x, 100, z );
+      camera.lookAt( 0, 0, 0 );
+    }
+
     const animate = () => {
+      ticker++;
       render();
-      window.requestAnimationFrame(animate);
+      timer = window.requestAnimationFrame(animate);
     }
 
     const render = () => {
       update3d();
+//      updateCamera();
       renderer.render( scene, camera );
     }
 
@@ -134,15 +159,57 @@ const App: any = (props: any) => {
     draw3d();
   };
 
-  React.useEffect(() => {
+  const handleUpload = (ev: any) => {
+    window.cancelAnimationFrame(timer);
+    /*
+    let fr = new FileReader();
+    const url = ev.target.files[0];
+    fr.readAsDataURL(ev.target.files[0]);
+    fr.onload = (res: any) => {
+      console.log(res.target.result)
+      setSrc(fr.result);
+      sourceMedia = fr.result;
+      navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false
+      }).then(handleSuccess);
+    };
+    */
+    var sound = audioElm;
+    sound.src = URL.createObjectURL(ev.target.files[0]);
+    sourceMedia = sound.src;
+    sound.onend = function() {
+      URL.revokeObjectURL(this.src);
+    }
     navigator.mediaDevices.getUserMedia({
       audio: true,
       video: false
     }).then(handleSuccess);
+  }
+
+  const handleClickRecords = () => {
+    sourceMedia = null;
+    navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: false
+    }).then(handleSuccess);    
+  };
+
+  React.useEffect(() => {
+
   }, []);
 
   return (
-    <canvas id="canvas" width="640" height="480" ref={ (elm) => { canvas = elm; } } />
+    <div>
+      <canvas id="canvas" width="640" height="480" ref={ (elm) => { canvas = elm; } } />
+      <div className="controls">
+      {/*
+        <button className="btn" id="record" onClick={handleClickRecords}>●</button>
+      */}
+        <audio id="audio" src={src} ref={ (elm) => { audioElm = elm; } } controls />
+        <input id="upload" accept="audio/*" type="file" onChange={handleUpload} />
+      </div>
+    </div>
   );
 };
 
