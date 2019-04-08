@@ -13,9 +13,9 @@ const App: any = (props: any) => {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     const audioCtx = new AudioContext();
     let source = audioCtx.createMediaStreamSource(stream);
-    let processor = audioCtx.createScriptProcessor(1024, 1, 1);
+    let processor = audioCtx.createScriptProcessor(4096, 1, 1);
     let analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 1024;
+    analyser.fftSize = 4096;
     var bufferLength = analyser.fftSize;
     var dataArray = new Uint8Array(bufferLength);
     analyser.getByteTimeDomainData(dataArray);
@@ -33,7 +33,7 @@ const App: any = (props: any) => {
 
     
     const camera = new THREE.PerspectiveCamera( 30, width / height, 0.1, 10000 );
-    camera.position.set( 50, 50, 50 );
+    camera.position.set( 100, 100, 100 );
     camera.lookAt( 0, 0, 0 );
 
     const scene = new THREE.Scene();
@@ -54,28 +54,27 @@ const App: any = (props: any) => {
       color: 0xff0000
       });
     let dot: any, line: any;
+
     const draw3d = () => {
-      let x = -16;
-      let z = -16;
-      for(var i = 0; i < 32; i++) {
-        for(var v = 0; v < 32; v++){
+      let x = -32;
+      let z = -32;
+      for(var i = 0; i < 64; i++) {
+        for(var v = 0; v < 64; v++){
           geometry.vertices.push(new THREE.Vector3( x, 0, z ) );
           x++;
-          if(x >= 16){
-            x = -16;
+          if(x >= 32){
+            x = -32;
           }
         }
         z++;
-        if(z >= 16){
-          z = -16;
+        if(z >= 32){
+          z = -21;
         }
       }
       dot = new THREE.Points(geometry, material);
       scene.add(dot);
       renderer.render( scene, camera );
-      processor.onaudioprocess = (e) => {
-        update3d();
-      };
+      animate();
     };
 
     const update3d = () => {
@@ -100,8 +99,17 @@ const App: any = (props: any) => {
       dot.material.color.g = max / (height / 20);
       dot.material.color.r = 1 - max / (height / 20);
       dot.material.needsUpdate = true;
-      renderer.render( scene, camera );
     };
+
+    const animate = () => {
+      render();
+      window.requestAnimationFrame(animate);
+    }
+
+    const render = () => {
+      update3d();
+      renderer.render( scene, camera );
+    }
 
     let timeoutId: any;
     const resizeCanvas = () => {
