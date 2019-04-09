@@ -2,20 +2,59 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import * as THREE from "three";
 // import "../css/style.scss";
+import { drawSquare3d, updateSquare3d, updateSquare3dCamera } from "./square"
+import { drawSquare2_3d, updateSquare2_3d, updateSquare2_3dCamera } from "./square2"
 
 let audioElm: any;
-let canvas: any;
-let source: any, processor: any, analyser: any;
+export let camera: any, scene: any, renderer: any;
+export let canvas: any, width: number, height: number;
+export let source: any, processor: any, analyser: any, dataArray: any, bufferLength: number;
+export let ticker = 0;
 let timer: any;
+let drawVisualizer: any, updateVisualizer: any, updateCamera: any;
 
-const App: any = (props: any) => {
-  let ticker = 0;
+export const animate = () => {
+    ticker += 0.5;
+    render();
+    timer = window.requestAnimationFrame(animate);
+  };
+
+  const render = () => {
+    updateVisualizer();
+    updateCamera();
+    renderer.render( scene, camera );
+  };
+
+  let timeoutId: any;
+  const resizeCanvas = () => {
+    if ( timeoutId ) return;
+
+    timeoutId = setTimeout(() => {
+      timeoutId = 0 ;
+
+    const
+      w = window.innerWidth,
+      h = window.innerHeight;
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(w, h);
+    camera.position.z = window.innerHeight / 2;
+
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+
+    }, 500);
+  };
+
+
+export const App: any = (props: any) => {
   let sourceMedia: any;
 
   const [src, setSrc] = React.useState();
+  const [visual, setVisual] = React.useState("square");
 
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   const audioCtx = new AudioContext();
+
   const handleSuccess = (stream?: any) => {
 // audio variable
     if(!source){
@@ -28,8 +67,8 @@ const App: any = (props: any) => {
     }
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 4096;
-    const bufferLength = analyser.fftSize;
-    const dataArray = new Uint8Array(bufferLength);
+    bufferLength = analyser.fftSize;
+    dataArray = new Uint8Array(bufferLength);
     analyser.getByteTimeDomainData(dataArray);
 
     source.connect(analyser);
@@ -37,120 +76,26 @@ const App: any = (props: any) => {
 
 
 // three.js initialization
-    const width = canvas.width, height = canvas.height;
-    const renderer = new THREE.WebGLRenderer({
+    width = canvas.width;
+    height = canvas.height;
+    renderer = new THREE.WebGLRenderer({
       canvas: canvas
     });
     renderer.setSize( width, height );
     
-    const camera = new THREE.PerspectiveCamera( 30, width / height, 0.1, 10000 );
+    camera = new THREE.PerspectiveCamera( 30, width / height, 0.1, 10000 );
     camera.position.set( 100, 100, 100 );
     camera.lookAt( 0, 0, 0 );
 
-    const scene = new THREE.Scene();
+    scene = new THREE.Scene();
 
     const axes = new THREE.AxesHelper(25);
+    scene.add(axes)
     renderer.setPixelRatio(window.devicePixelRatio);
     const bg_color = 0x000000;
     renderer.setClearColor( bg_color, 0 );
-
-    let dotGeometry = new THREE.Geometry();
-    dotGeometry.verticesNeedUpdate = true;
-    dotGeometry.elementsNeedUpdate = true;
-    let material = new THREE.PointsMaterial( {
-      size: 1,
-      sizeAttenuation: false,
-      color: 0xff0000
-      });
-    let dot: any, line: any;
-
-    const draw3d = () => {
-      let x = -32;
-      let z = -32;
-      for(var i = 0; i < 64; i++) {
-        for(var v = 0; v < 64; v++){
-          dotGeometry.vertices.push(new THREE.Vector3( x, 0, z ) );
-          x++;
-          if(x >= 32){
-            x = -32;
-          }
-        }
-        z++;
-        if(z >= 32){
-          z = -21;
-        }
-      }
-      dot = new THREE.Points(dotGeometry, material);
-      scene.add(dot);
-      renderer.render( scene, camera );
-      animate();
-    };
-
-    const update3d = () => {
-      analyser.getByteTimeDomainData(dataArray);
-      const sliceWidth = canvas.width * 1.0 / bufferLength;
-      let max = 0;
-      for(var i = 0; i < bufferLength; i++) {
-        const index = i;
-        const cy = dot.geometry.vertices[index].y;
-        const y = (dataArray[i] / 128 - 1) * height / 20;
-        dot.geometry.vertices[index].y = cy < y ? y : cy - .1;
-        if(max < dot.geometry.vertices[index].y){
-          max = dot.geometry.vertices[index].y;
-        }
-        dot.geometry.verticesNeedUpdate = true;
-        dot.geometry.elementsNeedUpdate = true;
-        dot.geometry.uvsNeedUpdate = true;
-        dot.geometry.normalsNeedUpdate = true;
-        dot.geometry.colorsNeedUpdate = true;
-      }
-      dot.material.color.g = max / (height / 20);
-      dot.material.color.r = 1 - max / (height / 20);
-      dot.material.needsUpdate = true;
-    };
-
-    const updateCamera = () => {
-      const deg = ticker,
-      rad = deg * Math.PI / 180;
-      const x = Math.cos(rad) * 100;
-      const z = Math.sin(rad) * 100;
-      camera.position.set( x, 100, z );
-      camera.lookAt( 0, 0, 0 );
-    }
-
-    const animate = () => {
-      ticker += 0.5;
-      render();
-      timer = window.requestAnimationFrame(animate);
-    }
-
-    const render = () => {
-      update3d();
-      updateCamera();
-      renderer.render( scene, camera );
-    }
-
-    let timeoutId: any;
-    const resizeCanvas = () => {
-      if ( timeoutId ) return;
-
-      timeoutId = setTimeout(() => {
-        timeoutId = 0 ;
-
-      const
-        w = window.innerWidth,
-        h = window.innerHeight;
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.setSize(w, h);
-      camera.position.z = window.innerHeight / 2;
-
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-
-      }, 500);
-    };
-
-    draw3d();
+    drawVisualizer();
+    animate();
   };
 
   const handleUpload = (ev: any) => {
@@ -176,7 +121,7 @@ const App: any = (props: any) => {
       URL.revokeObjectURL(this.src);
     };
     handleSuccess();
-  }
+  };
 
   const handleClickRecords = () => {
     sourceMedia = null;
@@ -186,8 +131,33 @@ const App: any = (props: any) => {
     }).then(handleSuccess);    
   };
 
-  React.useEffect(() => {
+  const handleChange = (ev?: any) => {
+    let result;
+    ev ? result = ev.target.value : null;
+    console.log(result)
+    switch(result){
+      case 'square2':
+        drawVisualizer = drawSquare2_3d;
+        updateVisualizer = updateSquare2_3d;
+        updateCamera = updateSquare2_3dCamera;
+        console.log('change')
+        break;
 
+      default:
+        drawVisualizer = drawSquare3d;
+        updateVisualizer = updateSquare3d;
+        updateCamera = updateSquare3dCamera;
+    }
+    if(source){
+      while(scene.children.length > 0){ 
+        scene.remove(scene.children[0]); 
+      }
+      drawVisualizer();
+    }
+  };
+
+  React.useEffect(() => {
+    handleChange();
   }, []);
 
   return (
@@ -197,6 +167,14 @@ const App: any = (props: any) => {
       {/*
         <button className="btn" id="record" onClick={handleClickRecords}>●</button>
       */}
+        <select name="type" id="type" onChange={handleChange}>
+          <option value="square">
+            square
+          </option>
+          <option value="square2">
+            square2
+          </option>
+        </select>
         <audio id="audio" src={src} ref={ (elm) => { audioElm = elm; } } controls />
         <input id="upload" accept="audio/*" type="file" onChange={handleUpload} />
       </div>
@@ -205,3 +183,4 @@ const App: any = (props: any) => {
 };
 
 ReactDOM.render(<App />, document.getElementById("root"));
+export default App;
