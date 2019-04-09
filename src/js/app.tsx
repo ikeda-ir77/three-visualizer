@@ -12,12 +12,11 @@ const App: any = (props: any) => {
   let ticker = 0;
   let sourceMedia: any;
 
-  console.log(audioElm)
   const [src, setSrc] = React.useState();
 
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   const audioCtx = new AudioContext();
-  const handleSuccess = (stream: any) => {
+  const handleSuccess = (stream?: any) => {
 // audio variable
     if(!source){
       source = sourceMedia ? audioCtx.createMediaElementSource(audioElm): audioCtx.createMediaStreamSource(stream);
@@ -38,13 +37,11 @@ const App: any = (props: any) => {
 
 
 // three.js initialization
-  console.log(canvas)
     const width = canvas.width, height = canvas.height;
     const renderer = new THREE.WebGLRenderer({
       canvas: canvas
     });
     renderer.setSize( width, height );
-
     
     const camera = new THREE.PerspectiveCamera( 30, width / height, 0.1, 10000 );
     camera.position.set( 100, 100, 100 );
@@ -53,15 +50,13 @@ const App: any = (props: any) => {
     const scene = new THREE.Scene();
 
     const axes = new THREE.AxesHelper(25);
-//    scene.add(axes);
-
     renderer.setPixelRatio(window.devicePixelRatio);
     const bg_color = 0x000000;
     renderer.setClearColor( bg_color, 0 );
 
-    let geometry = new THREE.Geometry();
-    geometry.verticesNeedUpdate = true;
-    geometry.elementsNeedUpdate = true;
+    let dotGeometry = new THREE.Geometry();
+    dotGeometry.verticesNeedUpdate = true;
+    dotGeometry.elementsNeedUpdate = true;
     let material = new THREE.PointsMaterial( {
       size: 1,
       sizeAttenuation: false,
@@ -74,7 +69,7 @@ const App: any = (props: any) => {
       let z = -32;
       for(var i = 0; i < 64; i++) {
         for(var v = 0; v < 64; v++){
-          geometry.vertices.push(new THREE.Vector3( x, 0, z ) );
+          dotGeometry.vertices.push(new THREE.Vector3( x, 0, z ) );
           x++;
           if(x >= 32){
             x = -32;
@@ -85,14 +80,13 @@ const App: any = (props: any) => {
           z = -21;
         }
       }
-      dot = new THREE.Points(geometry, material);
+      dot = new THREE.Points(dotGeometry, material);
       scene.add(dot);
       renderer.render( scene, camera );
       animate();
     };
 
     const update3d = () => {
-//      console.log(dot)
       analyser.getByteTimeDomainData(dataArray);
       const sliceWidth = canvas.width * 1.0 / bufferLength;
       let max = 0;
@@ -125,14 +119,14 @@ const App: any = (props: any) => {
     }
 
     const animate = () => {
-      ticker++;
+      ticker += 0.5;
       render();
       timer = window.requestAnimationFrame(animate);
     }
 
     const render = () => {
       update3d();
-//      updateCamera();
+      updateCamera();
       renderer.render( scene, camera );
     }
 
@@ -178,13 +172,10 @@ const App: any = (props: any) => {
     var sound = audioElm;
     sound.src = URL.createObjectURL(ev.target.files[0]);
     sourceMedia = sound.src;
-    sound.onend = function() {
+    sound.onended = function() {
       URL.revokeObjectURL(this.src);
-    }
-    navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: false
-    }).then(handleSuccess);
+    };
+    handleSuccess();
   }
 
   const handleClickRecords = () => {
